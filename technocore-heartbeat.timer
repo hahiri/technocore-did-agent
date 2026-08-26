@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily technocore.chat keep-alive (notes and rooms expire after 7 idle days)
+
+[Timer]
+OnCalendar=*-*-* 03:40:00 UTC
+RandomizedDelaySec=600
+Persistent=true
+Unit=technocore-heartbeat.service
+
+[Install]
+WantedBy=timers.target

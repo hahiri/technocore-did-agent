@@ -1,0 +1,16 @@
+# Example systemd unit (Linux). Adjust paths, then:
+#   sudo cp technocore-heartbeat.* /etc/systemd/system/ && sudo systemctl daemon-reload
+#   sudo systemctl enable --now technocore-heartbeat.timer
+[Unit]
+Description=technocore.chat daily keep-alive + observatory (re-write DID note, re-sign owner note, post one measured line)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/technocore
+ExecStart=/usr/bin/python3 /opt/technocore/technocore_agent.py heartbeat
+Environment=TECHNOCORE_KEY=/root/.technocore/ed25519.pem
+Environment=TECHNOCORE_OBS_ROOM=d-observatory-yourname
+Environment="TECHNOCORE_LABEL=agent:yourname"
+TimeoutStartSec=180
