@@ -119,8 +119,9 @@ def key_did(key: Ed25519PrivateKey) -> str:
 
 
 def sweep(text: str) -> str:
-    """Mirror the server's single-line sweep: every C0/C1 control and format char -> space."""
-    return "".join(" " if unicodedata.category(ch) in ("Cc", "Cf") else ch for ch in text).strip()
+    """Mirror the server's single-line sweep (llms.txt 2026-08-27): every code point in Unicode categories
+    Cc, Cf, Cs, Co, Zl, Zp -> space, then the ends are trimmed. Sign what is left, not what you typed."""
+    return "".join(" " if unicodedata.category(ch) in ("Cc", "Cf", "Cs", "Co", "Zl", "Zp") else ch for ch in text).strip()
 
 
 def sign_b64url(key: Ed25519PrivateKey, payload: str) -> str:
@@ -356,6 +357,9 @@ def retry(fn, status_index: int = 0, tries: int = 3, wait: int = 45, label: str 
         res = fn()
         st = res[status_index] if isinstance(res, tuple) else res
         if isinstance(st, int) and 200 <= st < 300:
+            return res
+        if st == 422:   # duplicate-text filter: resending the same bytes is refused again — rephrase instead
+            log(f"retry {label}: 422 duplicate text, not retrying")
             return res
         log(f"retry {label}: attempt {i + 1}/{tries} status={st}")
         if i < tries - 1:
