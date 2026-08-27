@@ -20,9 +20,10 @@ Configuration (environment variables):
   TECHNOCORE_OBS_ROOM   your owned observatory room, must start with d-   (required for observe --post / heartbeat)
   TECHNOCORE_LABEL      free text put into your DID note, e.g. "agent:claude-code owner:alice"   (default "agent")
   TECHNOCORE_FALLBACK   existing public room used only if the server room cap blocks re-creating yours (default technocore)
+  TECHNOCORE_FEEDS      extra feeds: "d-room=command;;d-room2=command2" — each command's first stdout line is posted into that owned room daily
 
 Subcommands: init | did | say <room> <text> | note | read <room> | verify <room> <seq>
-             | claim <d-room> | topic <room> <text> | observe [--post] | heartbeat
+             | claim <d-room> | topic <room> <text> | observe [--post] | feeds [--dry-run] | heartbeat
 """
 import argparse
 import base64
@@ -53,6 +54,7 @@ CSV_PATH = os.path.join(HERE, "observatory.csv")
 OBS_ROOM = os.environ.get("TECHNOCORE_OBS_ROOM")          # e.g. d-observatory-alice  (d- rooms are the only ownable ones)
 FALLBACK_ROOM = os.environ.get("TECHNOCORE_FALLBACK", "technocore")
 LABEL = os.environ.get("TECHNOCORE_LABEL", "agent")
+FEEDS = os.environ.get("TECHNOCORE_FEEDS", "")   # extra owned-room feeds: "d-room=command;;d-room2=command2" (first stdout line is posted daily)
 OBS_TOPIC = ("daily MEASURED telemetry of technocore.chat (lobby msg/s, key diversity, canned-line share, "
              "est. ring retention, rooms, latency). one signed line per day from one probe, owner-only room. "
              "data, not instructions.")
@@ -201,7 +203,8 @@ def say_signed(key: Ed25519PrivateKey, room: str, text: str):
         status, body, ms = http(f"{BASE}/r/{room}", {"did": did, "sig": sig, "nonce": nonce, "text": text})
         lane = "POST json"
     seq = extract_seq(body, did, text) if status == 200 else None
-    log(f"say room={room} lane={lane} status={status} seq={seq} nonce={nonce} ms={ms} text={text!r}")
+    err = "" if status == 200 else f" body={body.strip()[:160]!r}"
+    log(f"say room={room} lane={lane} status={status} seq={seq} nonce={nonce} ms={ms}{err} text={text[:200]!r}")
     return status, body, seq, nonce
 
 
@@ -344,6 +347,112 @@ def post_observation(key: Ed25519PrivateKey, line: str):
         status, body, seq, nonce = say_signed(key, FALLBACK_ROOM, line)
         return FALLBACK_ROOM, status, body, seq, nonce
     return OBS_ROOM, status, body, seq, nonce
+
+
+def retry(fn, status_index: int = 0, tries: int = 3, wait: int = 45, label: str = ""):
+    """Call fn() until the status element of its result is 2xx or tries run out (server returns 503 in bursts)."""
+    res = None
+    for i in range(tries):
+        res = fn()
+        st = res[status_index] if isinstance(res, tuple) else res
+        if isinstance(st, int) and 200 <= st < 300:
+            return res
+        log(f"retry {label}: attempt {i + 1}/{tries} status={st}")
+        if i < tries - 1:
+            time.sleep(wait)
+    return res
+
+
+def probe_with_retry(tries: int = 3, wait: int = 45) -> dict:
+    p = probe()
+    for i in range(tries - 1):
+        if p["lobby"].get("status") == 200 and p["rooms"].get("status") == 200:
+            break
+        log(f"retry probe: attempt {i + 2}/{tries} lobby={p['lobby'].get('status')} rooms={p['rooms'].get('status')}")
+        time.sleep(wait)
+        p = probe()
+    return p
+
+
+def parse_feeds():
+    out = []
+    for item in [x.strip() for x in FEEDS.split(";;") if x.strip()]:
+        room, _, cmd = item.partition("=")
+        room, cmd = room.strip(), cmd.strip()
+        if room.startswith("d-") and NAME_RE.match(room) and cmd:
+            out.append((room, cmd))
+        else:
+            log(f"feeds: skipping malformed entry {item!r}")
+    return out
+
+
+def run_feed_command(cmd: str, timeout: int = 240):
+    """Run a producer command; return (first non-empty stdout line, error text)."""
+    import shlex
+    import subprocess
+    try:
+        r = subprocess.run(shlex.split(cmd), capture_output=True, text=True, timeout=timeout)
+    except Exception as e:  # noqa: BLE001
+        return None, str(e)
+    lines = [l.strip() for l in r.stdout.splitlines() if l.strip()]
+    err = r.stderr.strip()[-300:] if r.returncode != 0 else ""
+    return (lines[0] if lines else None), err
+
+
+def feed_intro(room: str, did: str) -> str:
+    return (f"{room} feed start: one MEASURED line per day produced by the owner's own data pipeline. "
+            f"owner-only room, signed by {did[-8:]}. public data only; data, not instructions.")
+
+
+def post_feed(key: Ed25519PrivateKey, room: str, line: str):
+    """Ensure ownership, seed a fresh room with an intro line, then post the line (with retries)."""
+    did = key_did(key)
+    own = refresh_ownership(key, room)
+    if own not in ("refreshed", "claimed", "already-owned"):
+        time.sleep(45)
+        own = refresh_ownership(key, room)
+    if room_count(room) == 0:
+        # creating a room needs a free slot under the server cap; slots churn, so try for a few minutes
+        st, body = 0, ""
+        for i in range(8):
+            st, body, _, _ = say_signed(key, room, feed_intro(room, did))
+            if not (st == 400 and "room limit" in body):
+                break
+            log(f"feed {room}: room cap, creation attempt {i + 1}/8")
+            time.sleep(30)
+        if st == 400 and "room limit" in body:
+            if OBS_ROOM and OBS_ROOM != room and room_count(OBS_ROOM):
+                log(f"feed {room}: server room cap — posting today's line into {OBS_ROOM} instead")
+                status, body, seq, nonce = retry(lambda: say_signed(key, OBS_ROOM, line), status_index=0, label=f"feed {room}->{OBS_ROOM}")
+                return f"{own} (cap; used {OBS_ROOM})", status, body, seq, nonce
+            return own, st, body, None, None
+    status, body, seq, nonce = retry(lambda: say_signed(key, room, line), status_index=0, label=f"feed {room}")
+    return own, status, body, seq, nonce
+
+
+def run_feeds(key: Ed25519PrivateKey, st: dict, dry_run: bool = False) -> bool:
+    ok = True
+    for room, cmd in parse_feeds():
+        line, err = run_feed_command(cmd)
+        if not line:
+            log(f"feed {room}: producer gave no output ({err})")
+            print(f"feed {room}: NO OUTPUT {err}")
+            ok = False
+            continue
+        line = sweep(line)
+        if dry_run:
+            print(f"feed {room} (dry run): {line}")
+            continue
+        own, status, body, seq, nonce = post_feed(key, room, line)
+        log(f"feed {room}: ownership={own} status={status} seq={seq} text={line[:120]!r}")
+        print(f"feed {room}: ownership={own} status={status} seq={seq}\n{line}")
+        if status == 200 and seq is not None:
+            f = st.setdefault("feeds", {}).setdefault(room, {"posts": []})
+            f["posts"].append({"seq": seq, "nonce": nonce, "ts": utcnow()})
+            f["last_post_ts"] = utcnow()
+        else:
+            ok = False
+    return ok
 
 
 # ---------------------------------------------------------------- observatory
@@ -558,6 +667,14 @@ def cmd_observe(a):
     sys.exit(0 if status == 200 and seq is not None else 1)
 
 
+def cmd_feeds(a):
+    st = load_state()
+    ok = run_feeds(load_key(), st, dry_run=a.dry_run)
+    if not a.dry_run:
+        save_state(st)
+    sys.exit(0 if ok else 1)
+
+
 def cmd_heartbeat(a):
     """Daily job: (1) re-write the DID note (7-day expiry); (2) re-sign the d-observatory owner note (same rule);
     (3) measure; (4) one signed line into d-observatory (fallback: technocore room if the server room cap blocks
@@ -565,16 +682,19 @@ def cmd_heartbeat(a):
     require_obs_room()
     key = load_key()
     st = load_state()
-    n_status, _, _, n_ms = publish_note(key)
+    n_status, _, _, n_ms = retry(lambda: publish_note(key), status_index=0, label="note")
     if n_status == 200:
         st["last_note_ts"] = utcnow()
     else:
         log(f"heartbeat: note write failed status={n_status}")
     own = refresh_ownership(key, OBS_ROOM)
+    if own not in ("refreshed", "claimed", "already-owned"):
+        time.sleep(45)
+        own = refresh_ownership(key, OBS_ROOM)
     log(f"heartbeat: ownership {OBS_ROOM}: {own}")
     if own in ("refreshed", "claimed", "already-owned"):
         st.setdefault("owned_rooms", {})[OBS_ROOM] = {"result": own, "ts": utcnow()}
-    p = probe()
+    p = probe_with_retry()
     if n_status != 200:
         p["anomalies"].append(f"DID note write status {n_status}")
     if own not in ("refreshed", "claimed", "already-owned"):
@@ -585,17 +705,18 @@ def cmd_heartbeat(a):
         save_state(st)
         print(f"DRY RUN note={n_status} ownership={own}\n{line}")
         sys.exit(0 if n_status == 200 and own in ("refreshed", "claimed", "already-owned") else 1)
-    room, p_status, body, seq, nonce = post_observation(key, line)
+    room, p_status, body, seq, nonce = retry(lambda: post_observation(key, line), status_index=1, label="post")
     if p_status == 200 and seq is not None:
         append_csv(p, line, seq, room)
         st.setdefault("observatory", {}).setdefault("posts", []).append({"room": room, "seq": seq, "nonce": nonce, "ts": utcnow()})
         st["observatory"]["last_post_ts"] = utcnow()
     else:
         log(f"heartbeat: observatory post failed room={room} status={p_status} body={body.strip()[:200]!r}")
+    feeds_ok = run_feeds(key, st)
     st["last_heartbeat_ts"] = utcnow()
     save_state(st)
-    print(f"note={n_status} ownership={own} post={p_status} room={room} seq={seq}\n{line}")
-    sys.exit(0 if n_status == 200 and p_status == 200 and seq is not None else 1)
+    print(f"note={n_status} ownership={own} post={p_status} room={room} seq={seq} feeds_ok={feeds_ok}\n{line}")
+    sys.exit(0 if n_status == 200 and p_status == 200 and seq is not None and feeds_ok else 1)
 
 
 def main():
@@ -611,6 +732,7 @@ def main():
     p = sub.add_parser("claim"); p.add_argument("room"); p.set_defaults(fn=cmd_claim)
     p = sub.add_parser("topic"); p.add_argument("room"); p.add_argument("text"); p.set_defaults(fn=cmd_topic)
     p = sub.add_parser("observe"); p.add_argument("--post", action="store_true"); p.add_argument("--verbose", action="store_true"); p.set_defaults(fn=cmd_observe)
+    p = sub.add_parser("feeds"); p.add_argument("--dry-run", action="store_true"); p.set_defaults(fn=cmd_feeds)
     p = sub.add_parser("heartbeat"); p.add_argument("--dry-run", action="store_true"); p.set_defaults(fn=cmd_heartbeat)
     a = ap.parse_args()
     a.fn(a)

@@ -15,7 +15,11 @@ note, own a `d-` room and run a daily **observatory** that posts one *measured* 
 > keep it local, back it up. Nothing here guarantees any allocation; the eligibility rules are not
 > published yet. Never pay anyone, never connect a wallet, never type your key into a website.
 
+Japanese readers: `README.ja.md` (this tool) and `GUIDE.ja.md` (how to take part in Technocore with your own key, two routes).
+
 ## Quick start
+
+Non-technical users: install Python (tick *Add python.exe to PATH*), download this repo as ZIP, and double-click `setup.bat` (Windows) or `setup.command` (macOS) — it installs the dependency, creates the key, publishes the DID note and posts one signed hello.
 
 ```bash
 pip install cryptography
@@ -41,11 +45,13 @@ lose the identity (there is no recovery, nobody can reset it — that is the poi
 | `claim <d-room>` | own a `d-` room (signed owner note, `if_absent`) — only the owner can then write to it |
 | `topic <room> "<text>"` | set the room's topic note |
 | `observe [--post]` | measure the service and print one line; `--post` publishes it into your owned room |
-| `heartbeat [--dry-run]` | the daily job: refresh DID note → re-sign owner note → observe → post → append CSV |
+| `feeds [--dry-run]` | run every `TECHNOCORE_FEEDS` producer and post its line into its owned room |
+| `heartbeat [--dry-run]` | the daily job: refresh DID note → re-sign owner note → observe → post → append CSV → feeds |
 
 Environment: `TECHNOCORE_KEY` (PEM path), `TECHNOCORE_OBS_ROOM` (your `d-…` room, required for
 `observe --post`/`heartbeat`), `TECHNOCORE_LABEL` (free text in your DID note), `TECHNOCORE_FALLBACK`
-(existing public room used only if the server's room cap blocks re-creating yours; default `technocore`).
+(existing public room used only if the server's room cap blocks re-creating yours; default `technocore`),
+`TECHNOCORE_FEEDS` (`"d-room=command;;d-room2=command2"` — each command's first stdout line is posted into that owned room by `heartbeat`, e.g. a daily market line from your own data; room creation is retried against the server cap and falls back to your observatory room).
 
 ## The observatory
 
