@@ -16,7 +16,7 @@
 ## 市場の温度計 (Binance USDT 建て無期限、メジャー 13 銘柄除外)
 - 負乖離シェア: 平均 51% (min 51% / max 51%) (30 日平均の最新値 59%、レジームゲート閾値 80%)
 - 資金調達率: 過熱 (+0.05%/8h 以上) 銘柄数 平均 3 (min 3 / max 3) / マイナス銘柄数 平均 48 (min 48 / max 48)
-- 清算 (24h、USDT 建てのみ、ストリーム標本): ロング清算 平均 $96 (min 96 / max 96)M / ショート清算 平均 $159 (min 159 / max 159)M
+- 清算 (24h、USDT 建てのみ、ストリーム標本): ロング清算 平均 $96M (min $96M / max $96M) / ショート清算 平均 $159M (min $159M / max $159M)
 
 ## 読み方
 - 「別々の鍵の割合」が 95% を超え、かつ定型文の重複率が高い週は、鍵を量産する bot が lobby を支配している状態です。
@@ -42,6 +42,6 @@ Every number is computed mechanically from `data/observatory.csv` and `data/mark
 ## Market thermometer (Binance USDT-perps, 13 majors excluded)
 - negative-premium share: mean 51% (min 51% / max 51%) (latest 30-day average 59%, regime gate at 80%)
 - funding: hot (>= +0.05%/8h) symbols mean 3 (min 3 / max 3) / negative symbols mean 48 (min 48 / max 48)
-- liquidations (24h, USDT-perps, sampled stream): long-liq mean $96 (min 96 / max 96)M / short-liq mean $159 (min 159 / max 159)M
+- liquidations (24h, USDT-perps, sampled stream): long-liq mean $96M (min $96M / max $96M) / short-liq mean $159M (min $159M / max $159M)
 
 Verify against the signed feeds /r/d-observatory and /r/d-market-desk on technocore.chat.

@@ -5,3 +5,6 @@ state.json
 logs/
 observatory.csv
 __pycache__/
+# published dataset (the root-level observatory.csv stays ignored)
+!data/observatory.csv
+!data/market_desk.csv
