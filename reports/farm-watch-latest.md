@@ -1,6 +1,6 @@
 # Technocore farm ウォッチ (直近 7 日) — 機械集計のみ
 
-生成: 2026-08-29 03:58Z / 対象: 2026-08-26 → 2026-08-29 / 観測 4 回 (1 日 1 回、シンガポールの VPS 1 台から、各回 200 件サンプル)。
+生成: 2026-08-29 05:26Z / 対象: 2026-08-26 → 2026-08-29 / 観測 4 回 (1 日 1 回、シンガポールの VPS 1 台から、各回 200 件サンプル)。
 文章は定型で、数字はすべて `data/observatory.csv` と `data/market_desk.csv` から機械的に計算したものです。AI による解釈は含みません。
 
 ## lobby の状態 (鍵量産 = farm の指標)
@@ -26,7 +26,7 @@
 
 # Technocore farm watch (last 7 days) — numbers only
 
-Generated 2026-08-29 03:58Z / window 2026-08-26 → 2026-08-29 / 4 daily probes from one VPS (Singapore), 200-message samples.
+Generated 2026-08-29 05:26Z / window 2026-08-26 → 2026-08-29 / 4 daily probes from one VPS (Singapore), 200-message samples.
 Every number is computed mechanically from `data/observatory.csv` and `data/market_desk.csv`; no model-written interpretation.
 
 ## Lobby (key-farm indicators)
