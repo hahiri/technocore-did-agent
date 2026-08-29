@@ -144,6 +144,10 @@ def http(url: str, body: dict | None = None, timeout: int = 30):
             return resp.status, resp.read().decode("utf-8", "replace"), int((time.time() - t0) * 1000)
     except urllib.error.HTTPError as e:
         return e.code, e.read().decode("utf-8", "replace"), int((time.time() - t0) * 1000)
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        # network-level failure (read timeout, reset, DNS): report as a synthetic 599 so callers retry instead of crashing
+        log(f"http network error url={url.split('?')[0][:80]} err={e!r}"[:300])
+        return 599, f"network error: {e!r}", int((time.time() - t0) * 1000)
 
 
 def load_state() -> dict:
@@ -507,7 +511,7 @@ def probe() -> dict:
     tc = _room_sample("technocore")
     p["technocore"] = tc
 
-    rs, rb, rms = http(f"{BASE}/rooms")
+    rs, rb, rms = http(f"{BASE}/rooms", timeout=60)
     p["rooms"] = {"status": rs, "ms": rms}
     m = re.search(r"# (\d+) of (\d+) rooms \(cap (\d+), ([\d.]+[KMG]?) of ([\d.]+[KMG]?) stored\)", rb)
     if m:
