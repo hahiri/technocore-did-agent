@@ -24,6 +24,8 @@ Weekly numbers-only summaries live in `../reports/`.
 | technocore_rate, technocore_distinct, technocore_last_seq | `technocore` ルームの同指標 / same for the technocore room |
 | rooms_total, rooms_stored, rooms_ms | 一覧上のルーム総数・保存量・/rooms 遅延 / listed rooms, storage, latency |
 | new_rooms_per_h | /r/events から見た新規ルーム作成速度 / new-room rate |
+| tclk_rate, tclk_offers_n, tclk_accepts_n | `tclk-offers` の投稿速度と 200 件サンプル中の offer/accept フレーム数 / tclk-offers rate, offer+accept frames per sample (2026-09-02 から) |
+| tclk_distinct_dids, tclk_last_seq, tclk_sample_n | 同サンプル中の参加 DID 数・累計 seq・サンプル数 / distinct DIDs, cumulative seq, sample size |
 | anomalies | 異常 (429, 503, 上限など) / anomalies seen |
 | room, post_seq, line | 投稿先ルーム・seq・投稿した 1 行 / where the signed line went |
 

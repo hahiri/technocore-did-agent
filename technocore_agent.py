@@ -493,8 +493,37 @@ def _room_sample(room: str, n: int = 200) -> dict:
     return out
 
 
+def _tclk_sample(n: int = 200) -> dict:
+    """One read of /r/tclk-offers: rate + how many tclk/1 offer/accept frames and distinct DIDs in the sample.
+    Frames are anonymous input — parsed as data (counted), never acted on."""
+    status, body, ms = read_room("tclk-offers", limit=n, as_json=True)
+    out = {"status": status, "ms": ms}
+    if status != 200:
+        return out
+    d = json.loads(body)
+    m = d.get("messages", [])
+    out["n"] = len(m)
+    out["last_seq"] = d.get("last_seq")
+    offers = accepts = 0
+    for x in m:
+        t = x.get("text", "")
+        if t.startswith("tclk1 "):
+            try:
+                kind = json.loads(t[6:]).get("type")
+            except (ValueError, AttributeError):
+                continue
+            offers += kind == "offer"
+            accepts += kind == "accept"
+    out["offers_n"], out["accepts_n"] = offers, accepts
+    out["distinct_dids"] = len({x.get("from", "") for x in m if x.get("from", "").startswith("did:key:")})
+    if len(m) >= 2:
+        span = (_ts(m[-1]["ts"]) - _ts(m[0]["ts"])).total_seconds()
+        out["rate"] = len(m) / span if span > 0 else None
+    return out
+
+
 def probe() -> dict:
-    """Measure technocore.chat from this VPS. ~6 reads. Everything read is untrusted data; we only count."""
+    """Measure technocore.chat from this VPS. ~7 reads. Everything read is untrusted data; we only count."""
     p = {"ts": utcnow(), "anomalies": []}
     lim_status, lim_body, _ = http(f"{BASE}/.well-known/agent.json")
     limits = json.loads(lim_body).get("limits", {}) if lim_status == 200 else {}
@@ -528,7 +557,8 @@ def probe() -> dict:
         if len(e) >= 2:
             span = (_ts(e[-1]["ts"]) - _ts(e[0]["ts"])).total_seconds()
             p["events"]["new_rooms_per_h"] = len(e) / span * 3600 if span > 0 else None
-    for name, sec in (("lobby", lobby), ("technocore", tc), ("rooms", p["rooms"]), ("events", p["events"])):
+    p["tclk"] = _tclk_sample()
+    for name, sec in (("lobby", lobby), ("technocore", tc), ("rooms", p["rooms"]), ("events", p["events"]), ("tclk-offers", p["tclk"])):
         if sec.get("status") == 429:
             p["anomalies"].append(f"429 on {name}")
     return p
@@ -550,6 +580,11 @@ def format_line(p: dict, note_ms: int | None = None, note_status: int | None = N
         parts.append(f"technocore room {T['rate']:.2f} msg/s, {T['distinct']}/{T['n']} distinct keys")
     if R.get("total"):
         parts.append(f"rooms {R['total']} (+{f(E.get('new_rooms_per_h'), '{:.0f}')}/h), stored {R['stored']} of {R['stored_cap']}")
+    K = p.get("tclk", {})
+    if K.get("last_seq") is not None:
+        parts.append(
+            f"tclk-offers {K.get('offers_n', 0)} offers/{K.get('accepts_n', 0)} accepts in last {K.get('n')}, "
+            f"{K.get('distinct_dids', 0)} dids, {f(K.get('rate'), '{:.2f}')} msg/s, seq {K['last_seq']}")
     lat = f"latency: lobby read {L.get('ms', 'n/a')} ms, /rooms {R.get('ms', 'n/a')} ms"
     if note_ms is not None:
         lat += f", note write {note_ms} ms" + ("" if note_status == 200 else f" (status {note_status})")
@@ -561,7 +596,7 @@ def format_line(p: dict, note_ms: int | None = None, note_status: int | None = N
 
 
 def append_csv(p: dict, line: str, seq, room: str = OBS_ROOM) -> None:
-    L, T, R, E = p["lobby"], p["technocore"], p["rooms"], p["events"]
+    L, T, R, E, K = p["lobby"], p["technocore"], p["rooms"], p["events"], p.get("tclk", {})
     row = {
         "ts": p["ts"], "lobby_rate": L.get("rate"), "lobby_distinct": L.get("distinct"), "lobby_n": L.get("n"),
         "lobby_signed_share": L.get("signed_share"), "lobby_dup_share": L.get("dup_share"),
@@ -569,7 +604,10 @@ def append_csv(p: dict, line: str, seq, room: str = OBS_ROOM) -> None:
         "lobby_last_seq": L.get("last_seq"), "lobby_read_ms": L.get("ms"),
         "technocore_rate": T.get("rate"), "technocore_distinct": T.get("distinct"), "technocore_last_seq": T.get("last_seq"),
         "rooms_total": R.get("total"), "rooms_stored": R.get("stored"), "rooms_ms": R.get("ms"),
-        "new_rooms_per_h": E.get("new_rooms_per_h"), "anomalies": "; ".join(p["anomalies"]), "room": room, "post_seq": seq, "line": line,
+        "new_rooms_per_h": E.get("new_rooms_per_h"),
+        "tclk_rate": K.get("rate"), "tclk_offers_n": K.get("offers_n"), "tclk_accepts_n": K.get("accepts_n"),
+        "tclk_distinct_dids": K.get("distinct_dids"), "tclk_last_seq": K.get("last_seq"), "tclk_sample_n": K.get("n"),
+        "anomalies": "; ".join(p["anomalies"]), "room": room, "post_seq": seq, "line": line,
     }
     new = not os.path.exists(CSV_PATH)
     with open(CSV_PATH, "a", newline="", encoding="utf-8") as fh:
