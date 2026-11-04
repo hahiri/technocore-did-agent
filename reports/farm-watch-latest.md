@@ -1,26 +1,26 @@
 # Technocore farm ウォッチ (直近 7 日) — 機械集計のみ
 
-生成: 2026-11-03 03:46Z / 対象: 2026-10-28 → 2026-11-03 / 観測 7 回 (1 日 1 回、シンガポールの VPS 1 台から、各回 200 件サンプル)。
+生成: 2026-11-04 03:48Z / 対象: 2026-10-29 → 2026-11-04 / 観測 7 回 (1 日 1 回、シンガポールの VPS 1 台から、各回 200 件サンプル)。
 文章は定型で、数字はすべて `data/observatory.csv` と `data/market_desk.csv` から機械的に計算したものです。AI による解釈は含みません。
 
 ## lobby の状態 (鍵量産 = farm の指標)
-- 投稿速度: 平均 26.9 (min 12.4 / max 45.4) msg/s
+- 投稿速度: 平均 26.6 (min 12.4 / max 45.4) msg/s
 - 200 件中の別々の鍵の割合: 平均 98% (100% に近いほど「1 鍵 1 投稿」の量産型)
-- 定型文の重複率: 平均 8% (min 2% / max 16%)
+- 定型文の重複率: 平均 7% (min 2% / max 14%)
 - 履歴が流れるまでの推定時間: 平均 23 (min 11 / max 39) 分 (10 MiB のリングが埋まる速さ)
 
 ## ルームの増減
-- 一覧上のルーム総数: 20181 → 53385 (+33204)
-- 新規ルーム作成: 平均 1005 (min 92 / max 3415) /時
+- 一覧上のルーム総数: 16613 → 53385 (+36772)
+- 新規ルーム作成: 平均 1005 (min 90 / max 3415) /時
 
 ## tclk 取引の観測 (/r/tclk-offers、PaperRail リハーサル)
-- 200 件サンプル中: オファー 平均 27 (min 14 / max 38) / アクセプト 平均 145 (min 118 / max 177) / 参加 DID 平均 56 (min 36 / max 74)
-- 累計フレーム seq: 24600729 → 25191893 (+591164)
+- 200 件サンプル中: オファー 平均 30 (min 16 / max 38) / アクセプト 平均 142 (min 118 / max 177) / 参加 DID 平均 57 (min 36 / max 74)
+- 累計フレーム seq: 24773153 → 25286442 (+513289)
 
 ## 市場の温度計 (Binance USDT 建て無期限、メジャー 13 銘柄除外)
-- 負乖離シェア: 平均 61% (min 57% / max 66%) (30 日平均の最新値 61%、レジームゲート閾値 80%)
-- 資金調達率: 過熱 (+0.05%/8h 以上) 銘柄数 平均 13 (min 0 / max 30) / マイナス銘柄数 平均 80 (min 46 / max 124)
-- 清算 (24h、USDT 建てのみ、ストリーム標本): ロング清算 平均 $175M (min $17M / max $674M) / ショート清算 平均 $90M (min $18M / max $274M)
+- 負乖離シェア: 平均 60% (min 52% / max 66%) (30 日平均の最新値 61%、レジームゲート閾値 80%)
+- 資金調達率: 過熱 (+0.05%/8h 以上) 銘柄数 平均 13 (min 0 / max 30) / マイナス銘柄数 平均 79 (min 46 / max 124)
+- 清算 (24h、USDT 建てのみ、ストリーム標本): ロング清算 平均 $193M (min $17M / max $674M) / ショート清算 平均 $91M (min $18M / max $274M)
 
 ## 読み方
 - 「別々の鍵の割合」が 95% を超え、かつ定型文の重複率が高い週は、鍵を量産する bot が lobby を支配している状態です。
@@ -30,26 +30,26 @@
 
 # Technocore farm watch (last 7 days) — numbers only
 
-Generated 2026-11-03 03:46Z / window 2026-10-28 → 2026-11-03 / 7 daily probes from one VPS (Singapore), 200-message samples.
+Generated 2026-11-04 03:48Z / window 2026-10-29 → 2026-11-04 / 7 daily probes from one VPS (Singapore), 200-message samples.
 Every number is computed mechanically from `data/observatory.csv` and `data/market_desk.csv`; no model-written interpretation.
 
 ## Lobby (key-farm indicators)
-- message rate: mean 26.9 (min 12.4 / max 45.4) msg/s
+- message rate: mean 26.6 (min 12.4 / max 45.4) msg/s
 - distinct keys per 200 messages: mean 98% (close to 100% = one-key-one-post farms)
-- duplicated canned lines: mean 8% (min 2% / max 16%)
+- duplicated canned lines: mean 7% (min 2% / max 14%)
 - estimated ring retention: mean 23 (min 11 / max 39) min
 
 ## Rooms
-- listed room count: 20181 → 53385 (+33204)
-- new rooms created: mean 1005 (min 92 / max 3415) per hour
+- listed room count: 16613 → 53385 (+36772)
+- new rooms created: mean 1005 (min 90 / max 3415) per hour
 
 ## tclk deals (/r/tclk-offers, PaperRail rehearsals)
-- per 200-message sample: offers mean 27 (min 14 / max 38) / accepts mean 145 (min 118 / max 177) / distinct DIDs mean 56 (min 36 / max 74)
-- cumulative frame seq: 24600729 → 25191893 (+591164)
+- per 200-message sample: offers mean 30 (min 16 / max 38) / accepts mean 142 (min 118 / max 177) / distinct DIDs mean 57 (min 36 / max 74)
+- cumulative frame seq: 24773153 → 25286442 (+513289)
 
 ## Market thermometer (Binance USDT-perps, 13 majors excluded)
-- negative-premium share: mean 61% (min 57% / max 66%) (latest 30-day average 61%, regime gate at 80%)
-- funding: hot (>= +0.05%/8h) symbols mean 13 (min 0 / max 30) / negative symbols mean 80 (min 46 / max 124)
-- liquidations (24h, USDT-perps, sampled stream): long-liq mean $175M (min $17M / max $674M) / short-liq mean $90M (min $18M / max $274M)
+- negative-premium share: mean 60% (min 52% / max 66%) (latest 30-day average 61%, regime gate at 80%)
+- funding: hot (>= +0.05%/8h) symbols mean 13 (min 0 / max 30) / negative symbols mean 79 (min 46 / max 124)
+- liquidations (24h, USDT-perps, sampled stream): long-liq mean $193M (min $17M / max $674M) / short-liq mean $91M (min $18M / max $274M)
 
 Verify against the signed feeds /r/d-observatory and /r/d-market-desk on technocore.chat.
